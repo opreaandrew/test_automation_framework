@@ -5,9 +5,9 @@ Thought train so far:
 - tests: test cases
     Set up a sample test case. Going to model the framework after the test case, in order to keep it as simple as possible.
 - models: page models
-- slug.py: main entry point
+- taf.py: main entry point
     Should be as simple as possible to run a test case.
-    python slug.py  -> runs all test cases with the config from environment
+    python taf.py  -> runs all test cases with the config from environment
     Modifiers: 
         Test selection:
     --test <path> -> runs all test cases in a folder. If more than one folder is provided, runs all test cases in all folders.
