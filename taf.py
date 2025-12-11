@@ -7,9 +7,10 @@
 import argparse
 import glob
 import os
+import re
+import core.common as common
 
 def parse_arguments() -> argparse.ArgumentParser:
-    """Create and configure the argument parser."""
     parser = argparse.ArgumentParser(
         prog="taf",
         description="Test Automation Framework - Main entry point"
@@ -108,11 +109,6 @@ def parse_arguments() -> argparse.ArgumentParser:
 
 
 def process_arguments(args: argparse.Namespace) -> dict:
-    """
-    Process and organize parsed arguments into a configuration dictionary.
-    
-    Returns a dict with categorized settings ready for the test runner.
-    """
     config = {
         "selection": {
             "test_paths": args.test or [],
@@ -165,30 +161,23 @@ def process_arguments(args: argparse.Namespace) -> dict:
     return config
 
 
-def get_tests_from_path(path: str) -> list:
-    """
-    Retrieves a list of all immediate subfolders within the given path(s).
-    If path is a string, it finds subfolders within that directory.
-    If path is a list of strings, it finds subfolders within each directory in the list.
-    """
-
-    all_subfolders = []
+def get_tests_from_path(path: str | list[str]) -> list[str]:
+    tests_to_run = []
     paths_to_scan = [path] if isinstance(path, str) else path
 
     for current_path in paths_to_scan:
         if os.path.isdir(current_path):
-            for entry in os.scandir(current_path):
-                if entry.is_dir():
-                    all_subfolders.append(entry.path)
-        elif os.path.exists(current_path):
-            # It's a file, or something else that's not a directory
-            # For this function's purpose, we ignore it.
-            pass
-        else:
-            # Path does not exist
-            pass
-            
-    return all_subfolders
+            # Check if this path itself is a test folder
+            if re.match(r"T\d+$", os.path.basename(current_path)):
+                tests_to_run.append(current_path)
+            else:
+                # Search recursively for test folders
+                for root, dirs, _ in os.walk(current_path):
+                    for dir_name in dirs:
+                        if re.match(r"T\d+$", dir_name):
+                            tests_to_run.append(os.path.join(root, dir_name))
+    return tests_to_run
+
 
 def main() -> None:
     parser = parse_arguments()
@@ -196,16 +185,18 @@ def main() -> None:
     
     config = process_arguments(args)
 
-    test_path = None
     if not config["selection"]["test_paths"]:
         print("\n[Test_path] is not specified. Running all tests from /tests folder.")
-        test_path = "/tests"
+        test_path = os.path.join(common.BASE_DIR, "tests")
     else:
-        print("\n[Test_path] is specified. Running tests from the specified path.")
-        test_path = config["selection"]["test_paths"]
+        keywords = config["selection"]["test_paths"]
+        print(f"\n[Test_path] Searching for keywords: {keywords}")
+        test_path = common.search_for_paths(keywords)
+        if test_path:
+            print(f"[Test_path] Resolved to: {test_path}")
 
     tests = get_tests_from_path(test_path)
-    print(f"\nFound {len(tests)} tests.")
+    print(f"\nFound {len(tests)} test(s): {[os.path.basename(t) for t in tests]}")
 
     if config["execution"]["dry_run"]:
         print("\n[DRY RUN] Would execute tests with above configuration.")
