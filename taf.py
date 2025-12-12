@@ -5,12 +5,9 @@
 """
 
 import argparse
-import glob
-import os
-import re
-import core.common as common
+from core.test_runner import TestRunner
 
-def parse_arguments() -> argparse.ArgumentParser:
+def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="taf",
         description="Test Automation Framework - Main entry point"
@@ -105,10 +102,8 @@ def parse_arguments() -> argparse.ArgumentParser:
         help="Screenshot mode: on, off, only_failed. Default is only_failed."
     )
 
-    return parser
+    args = parser.parse_args()
 
-
-def process_arguments(args: argparse.Namespace) -> dict:
     config = {
         "selection": {
             "test_paths": args.test or [],
@@ -138,71 +133,40 @@ def process_arguments(args: argparse.Namespace) -> dict:
     print("=" * 50)
     
     print("\n[Test Selection]")
-    print(f"  Test paths:  {config['selection']['test_paths'] or None}")
+    print(f"  Test paths:  {config['selection']['test_paths'] or 'All tests'}")
     print(f"  Target:      {config['selection']['target'] or 'default'}")
     print(f"  Environment: {config['selection']['environment'] or 'default'}")
     print(f"  Browser:     {config['selection']['browser'] or 'default'}")
     
     print("\n[Execution Behavior]")
-    print(f"  Headless:    {config['execution']['headless']}")
-    print(f"  Debug:       {config['execution']['debug']}")
-    print(f"  Dry run:     {config['execution']['dry_run']}")
-    print(f"  Fail fast:   {config['execution']['fail_fast']}")
+    print(f"  Headless:    {config['execution']['headless'] or 'default'}")
+    print(f"  Debug:       {config['execution']['debug'] or 'default'}")
+    print(f"  Dry run:     {config['execution']['dry_run'] or 'default'}")
+    print(f"  Fail fast:   {config['execution']['fail_fast'] or 'default'}")
     print(f"  Timeout:     {config['execution']['timeout'] or 'default'}s")
-    print(f"  Base URL:    {config['execution']['base_url'] or 'from config'}")
-    print(f"  Retry:       {config['execution']['retry']}")
+    print(f"  Base URL:    {config['execution']['base_url'] or 'default'}")
+    print(f"  Retry:       {config['execution']['retry'] or 'default'}")
     print(f"  Parallel:    {config['execution']['parallel']} worker(s)")
     
     print("\n[Reporting]")
-    print(f"  Report type: {config['reporting']['report_type']}")
-    print(f"  Screenshots: {config['reporting']['screenshot']}")
+    print(f"  Report type: {config['reporting']['report_type'] or 'default'}")
+    print(f"  Screenshots: {config['reporting']['screenshot'] or 'default'}")
     print("=" * 50)
     
     return config
 
 
-def get_tests_from_path(path: str | list[str]) -> list[str]:
-    tests_to_run = []
-    paths_to_scan = [path] if isinstance(path, str) else path
-
-    for current_path in paths_to_scan:
-        if os.path.isdir(current_path):
-            # Check if this path itself is a test folder
-            if re.match(r"T\d+$", os.path.basename(current_path)):
-                tests_to_run.append(current_path)
-            else:
-                # Search recursively for test folders
-                for root, dirs, _ in os.walk(current_path):
-                    for dir_name in dirs:
-                        if re.match(r"T\d+$", dir_name):
-                            tests_to_run.append(os.path.join(root, dir_name))
-    return tests_to_run
-
-
 def main() -> None:
-    parser = parse_arguments()
-    args = parser.parse_args()
-    
-    config = process_arguments(args)
+    # Parse arguments
+    config = parse_arguments()
 
-    if not config["selection"]["test_paths"]:
-        print("\n[Test_path] is not specified. Running all tests from /tests folder.")
-        test_path = os.path.join(common.BASE_DIR, "tests")
-    else:
-        keywords = config["selection"]["test_paths"]
-        print(f"\n[Test_path] Searching for keywords: {keywords}")
-        test_path = common.search_for_paths(keywords)
-        if test_path:
-            print(f"[Test_path] Resolved to: {test_path}")
+    # Initialize test runner and run tests
+    test_runner = TestRunner(config)
+    test_status = test_runner.run()
 
-    tests = get_tests_from_path(test_path)
-    print(f"\nFound {len(tests)} test(s): {[os.path.basename(t) for t in tests]}")
-
-    if config["execution"]["dry_run"]:
-        print("\n[DRY RUN] Would execute tests with above configuration.")
-    else:
-        print("\n[TODO] Test execution not yet implemented.")
-
+    # # Parse individual logs and generate report
+    # report = Reports(config)
+    # report.generate_report()
 
 if __name__ == "__main__":
     main()
