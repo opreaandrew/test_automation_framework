@@ -11,7 +11,7 @@ class TestRunner:
     def __init__(self, config: dict):
         self.config = config
     
-    def run(self):
+    def run(self) -> dict[str, str]:
         test_status = {}
         tests = []
 
@@ -64,9 +64,10 @@ class TestRunner:
         test_thread = threading.Thread(target=self._run_single_test, args=(test_path, test_file, logger))
         test_thread.start()
         test_result = test_thread.join()
+        # TODO: Get test results from Thread
         logger.info(f"Test execution completed for {test_path}")
         logger.stop()
-        return test_result
+        return test_path, test_result
 
 
     def _run_single_test(self, test_path: str, test_file: str, logger: Logger):
