@@ -7,8 +7,7 @@
 from abc import ABC, abstractmethod
 
 class AbstractTest(ABC):
-    def __init__(self, platform, parameters):
-        self.platform = platform
+    def __init__(self, parameters):
         self.parameters = parameters
 
     @abstractmethod

@@ -106,7 +106,7 @@ def parse_arguments() -> argparse.Namespace:
 
     config = {
         "selection": {
-            "test_paths": args.test or [],
+            "test_paths": args.test or "tests",
             "target": args.target,
             "environment": args.env,
             "browser": args.browser,
@@ -163,6 +163,10 @@ def main() -> None:
     # Initialize test runner and run tests
     test_runner = TestRunner(config)
     test_status = test_runner.run()
+
+    print("\nTest results:")
+    for test_path, status in test_status.items():
+        print(f"  {test_path}: Passed" if status else "Failed")
 
     # # Parse individual logs and generate report
     # report = Reports(config)

@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 
 import os
-import core.common as common
+import re
+import threading
+import importlib
+import importlib.util
+from .logger import Logger
 
 class TestRunner:
     def __init__(self, config: dict):
@@ -9,22 +13,23 @@ class TestRunner:
     
     def run(self):
         test_status = {}
-        tests_path = []
+        tests = []
 
-        if not self.config["selection"]["test_paths"]:
-            print("\n[Test_path] is not specified. Running all tests from /tests folder.")
-            tests_path = os.path.join(common.BASE_DIR, "tests")
-        else:
-            keywords = self.config["selection"]["test_paths"]
-            print(f"\n[Test_path] Searching for keywords: {keywords}")
-            tests_path = self.get_tests_from_path(keywords)
-        if tests_path:
-            print(f"[Test_path] Resolved to: {tests_path}")
+        tests = self.get_tests_from_path(self.config["selection"]["test_paths"])
 
+        if tests:
+            print(f"[Test_path] Resolved to: {tests}")
+
+        print("\n" + "=" * 50)
+        print("Starting tests...")
+        print("=" * 50 + "\n")
+        for test in tests:
+            for _ in range(self.config["execution"]["parallel"]):
+                test_status[test] = self._start_test_thread(test)
         return test_status
 
 
-    def get_tests_from_path(path: str | list[str]) -> list[str]:
+    def get_tests_from_path(self, path: str | list[str]) -> list[str]:
         tests_to_run = []
         paths_to_scan = [path] if isinstance(path, str) else path
 
@@ -42,18 +47,44 @@ class TestRunner:
         return tests_to_run
 
 
-    def start_test_thread(self, test_path: str) -> str:
+    def _start_test_thread(self, test_path: str) -> str:
         # Find the test file
         test_file = None
-        for files in os.listdir(test_path):
-            if files.endswith(".py") and files != "__init__.py":
-                test_file = files
+        for file in os.listdir(test_path):
+            if file.endswith(".py") and file != "__init__.py":
+                test_file = file
 
         if not test_file:
             print(f"Error: No .py test file found in {test_path}")
             return False
 
-        # TODO: Start test thread
-        # Magic test logic
-        return False
+        logger = Logger(test_path)
+        logger.start()
+        logger.info(f"Starting test execution for {test_path}")
+        test_thread = threading.Thread(target=self._run_single_test, args=(test_path, test_file, logger))
+        test_thread.start()
+        test_result = test_thread.join()
+        logger.info(f"Test execution completed for {test_path}")
+        logger.stop()
+        return test_result
 
+
+    def _run_single_test(self, test_path: str, test_file: str, logger: Logger):
+        try:
+            module_path = os.path.join(test_path, test_file)
+            module_path = module_path.replace("/", ".").replace(".py", "")
+            test_module = importlib.import_module(module_path)
+            test_instance = test_module.TAFTest(self.config, logger)
+            if not test_instance.setup():
+                print(f"Test setup failed for {path}")
+                return False
+            if not test_instance.test():
+                print(f"Test failed for {path}")
+                return False
+            if not test_instance.teardown():
+                print(f"Test teardown failed for {path}")
+                return False
+            return True
+        except Exception as e:
+            print(f"An error occurred during test execution for {path}: {e}")
+            return False
