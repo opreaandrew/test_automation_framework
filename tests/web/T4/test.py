@@ -3,8 +3,8 @@
     Awesome copyright text
 """
 
-import time
 import core.abstract_test as at
+from core.common import wait
 
 class TAFTest(at.AbstractTest):
     def __init__(self, parameters, logger):
@@ -12,15 +12,12 @@ class TAFTest(at.AbstractTest):
         self.logger = logger
 
     def setup(self):
-        self.logger.info("Setup successful")
         return True
 
     def test(self):
         self.logger.info("Test login")
-        time.sleep(5)
-        self.logger.info("Login successful")
+        wait(5)
         return True
 
     def teardown(self):
-        self.logger.info("Teardown successful")
         return True

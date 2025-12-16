@@ -3,6 +3,7 @@
 import os
 import re
 import threading
+from concurrent.futures import ThreadPoolExecutor
 import importlib
 import importlib.util
 from .logger import Logger
@@ -23,9 +24,12 @@ class TestRunner:
         print("\n" + "=" * 50)
         print("Starting tests...")
         print("=" * 50 + "\n")
-        for test in tests:
-            for _ in range(self.config["execution"]["parallel"]):
-                test_status[test] = self._start_test_thread(test)
+
+        max_workers = self.config["execution"]["parallel"]
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(self._instantiate_test, test): test for test in tests}
+            for future in futures:
+                test_status[futures[future]] = future.result()
         return test_status
 
 
@@ -47,45 +51,36 @@ class TestRunner:
         return tests_to_run
 
 
-    def _start_test_thread(self, test_path: str) -> str:
-        # Find the test file
-        test_file = None
-        for file in os.listdir(test_path):
-            if file.endswith(".py") and file != "__init__.py":
-                test_file = file
-
-        if not test_file:
-            print(f"Error: No .py test file found in {test_path}")
-            return False
-
+    def _instantiate_test(self, test_path: str):
         logger = Logger(test_path)
         logger.start()
-        logger.info(f"Starting test execution for {test_path}")
-        test_thread = threading.Thread(target=self._run_single_test, args=(test_path, test_file, logger))
-        test_thread.start()
-        test_result = test_thread.join()
-        # TODO: Get test results from Thread
-        logger.info(f"Test execution completed for {test_path}")
+
+        if not self._execute_test(test_path, logger):
+            return False
+        
         logger.stop()
-        return test_path, test_result
+        return True
 
 
-    def _run_single_test(self, test_path: str, test_file: str, logger: Logger):
+    def _execute_test(self, test_path: str, logger: Logger):
         try:
-            module_path = os.path.join(test_path, test_file)
+            module_path = os.path.join(test_path, "test.py")
             module_path = module_path.replace("/", ".").replace(".py", "")
             test_module = importlib.import_module(module_path)
             test_instance = test_module.TAFTest(self.config, logger)
             if not test_instance.setup():
-                print(f"Test setup failed for {path}")
+                logger.error(f"Test setup failed")
                 return False
+            logger.info(f"Test setup successful")
             if not test_instance.test():
-                print(f"Test failed for {path}")
+                logger.error(f"Test failed")
                 return False
+            logger.info(f"Test execution successful")
             if not test_instance.teardown():
-                print(f"Test teardown failed for {path}")
+                logger.error(f"Test teardown failed")
                 return False
+            logger.info(f"Test teardown successful")
             return True
         except Exception as e:
-            print(f"An error occurred during test execution for {path}: {e}")
+            logger.error(f"An error occurred during test execution for {test_path}: {e}")
             return False

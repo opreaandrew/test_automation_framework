@@ -1,7 +1,5 @@
-[33m[INFO] Starting test execution for tests/web/T3[0m
-[33m[INFO] Setup successful[0m
+[33m[INFO] Test setup successful[0m
 [33m[INFO] Test login[0m
-[33m[INFO] Login successful[0m
-[33m[INFO] Teardown successful[0m
-[33m[INFO] Test execution completed for tests/web/T3[0m
+[33m[INFO] Test execution successful[0m
+[33m[INFO] Test teardown successful[0m
 [32mTest execution completed[0m
