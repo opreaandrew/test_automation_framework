@@ -2,12 +2,13 @@
 
 import os
 import re
-import threading
-from concurrent.futures import ThreadPoolExecutor
 import importlib
 import importlib.util
 from .logger import Logger
 from .reporter import Reporter
+from .actions import Actions
+from drivers.driver_factory import DriverFactory
+from concurrent.futures import ThreadPoolExecutor
 
 class TestRunner:
     def __init__(self, config: dict):
@@ -57,34 +58,58 @@ class TestRunner:
         logger = Logger(test_path)
         logger.start()
 
-        if not self._execute_test(test_path, logger):
-            return False
+        # Initialize driver based on configuration
+        driver_type = self.config["execution"]["driver"]
+        browser = self.config["selection"]["browser"]
+        headless = self.config["execution"]["headless"]
         
+        if not browser:
+            browser = "chromium" if driver_type == "playwright" else "chrome"
+        headless = self.config["execution"]["headless"]
+        logger.message(f"Initializing driver: {driver_type}, {browser}, {headless}")
+        driver, actions = self._initialize_driver(driver_type, browser, headless, logger)
+        logger.message(f"Driver initialized: {driver_type}")
+        
+        if not self._execute_test(test_path, logger, actions):
+            return False
+
+        driver.quit()
         logger.stop()
+
         return True
 
 
-    def _execute_test(self, test_path: str, logger: Logger):
+    def _execute_test(self, test_path: str, logger: Logger, actions):
         passed = True
         try:
             module_path = os.path.join(test_path, "test.py")
             module_path = module_path.replace("/", ".").replace(".py", "")
             test_module = importlib.import_module(module_path)
-            test_instance = test_module.TAFTest(self.config, logger)
+            test_instance = test_module.TAFTest(self.config, logger, actions)
             if not test_instance.setup():
                 logger.error(f"Test setup failed")
                 passed = False
-            logger.info(f"Test setup successful")
+            logger.message(f"Test setup successful")
             if not test_instance.test():
                 logger.error(f"Test failed")
                 passed = False
-            logger.info(f"Test execution successful")
+            logger.message(f"Test execution successful")
             if not test_instance.teardown():
                 logger.error(f"Test teardown failed")
                 passed = False
-            logger.info(f"Test teardown successful")
+            logger.message(f"Test teardown successful")
         except Exception as e:
             logger.error(f"An error occurred during test execution for {test_path}: {e}")
             passed = False
-        logger.info("TEST PASSED" if passed else "TEST FAILED")
+        logger.message("TEST PASSED" if passed else "TEST FAILED")
         return passed
+
+
+    def _initialize_driver(self, driver_type: str, browser: str, headless: bool, logger: Logger):
+        driver = None
+        try:
+            driver = DriverFactory.create_driver(driver_type, browser_type=browser, headless=headless)
+            actions = Actions(driver, logger)
+        except Exception as e:
+            raise Exception(f"Failed to initialize driver: {e}")
+        return driver, actions

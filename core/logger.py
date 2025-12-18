@@ -8,6 +8,7 @@ class Color:
     GREEN = "32"
     YELLOW = "33"
     BLUE = "34"
+    DEFAULT = "39"
 
 class Logger:
     def __init__(self, test_folder):
@@ -16,6 +17,8 @@ class Logger:
         os.makedirs(test_folder, exist_ok=True)
 
     def _log(self, message, color):
+        if not color:
+            color = Color.DEFAULT
         formatted_message = f"\033[{color}m{message}\033[0m"
         print(f"{self.test_name}: {formatted_message}")
         with open(self.log_file, 'a') as f:
@@ -34,6 +37,9 @@ class Logger:
 
     def error(self, message):
         self._log(f"[ERROR] {message}", Color.RED)
+
+    def message(self, message, color=None):
+        self._log(message, color)  
 
     def append(self, message):
         self._log(message, Color.BLUE)

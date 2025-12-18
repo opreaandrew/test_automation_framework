@@ -1,6 +1,8 @@
-[33m[INFO] Test setup successful[0m
-[33m[INFO] Test login[0m
-[33m[INFO] Test execution successful[0m
-[33m[INFO] Test teardown successful[0m
-[33m[INFO] TEST PASSED[0m
+[39mInitializing driver: playwright, firefox, True[0m
+[39mDriver initialized: playwright[0m
+[39mTest setup successful[0m
+[31m[ERROR] Test login[0m
+[39mTest execution successful[0m
+[39mTest teardown successful[0m
+[39mTEST PASSED[0m
 [32mTest execution completed[0m

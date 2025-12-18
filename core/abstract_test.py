@@ -7,8 +7,10 @@
 from abc import ABC, abstractmethod
 
 class AbstractTest(ABC):
-    def __init__(self, parameters):
+    def __init__(self, parameters, logger, actions):
         self.parameters = parameters
+        self.logger = logger
+        self.actions = actions
 
     @abstractmethod
     def setup(self):

@@ -1,7 +1,4 @@
 #!/usr/bin/env python
-"""
-    Awesome copyright text
-"""
 
 import core.abstract_test as at
 
@@ -13,8 +10,8 @@ class TAFTest(at.AbstractTest):
         return True
 
     def test(self):
-        self.logger.info("Test login")
-        self.actions.wait(5)
+        url = "https://www.google.com"
+        self.actions.navigate_to(url)
         return True
 
     def teardown(self):

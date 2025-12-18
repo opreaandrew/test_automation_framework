@@ -40,6 +40,13 @@ def parse_arguments() -> argparse.Namespace:
     # Execution behavior
     execution = parser.add_argument_group("Execution Behavior")
     execution.add_argument(
+        "--driver", "-d",
+        choices=["playwright", "selenium", "appium"],
+        default="playwright",
+        metavar="DRIVER",
+        help="Driver type: playwright, selenium, appium. Default is playwright."
+    )
+    execution.add_argument(
         "--headless",
         action="store_true",
         help="Run test cases in headless mode."
@@ -112,6 +119,7 @@ def parse_arguments() -> argparse.Namespace:
             "browser": args.browser,
         },
         "execution": {
+            "driver": args.driver,
             "headless": args.headless,
             "debug": args.debug,
             "dry_run": getattr(args, "dry_run", False),
@@ -139,6 +147,7 @@ def parse_arguments() -> argparse.Namespace:
     print(f"  Browser:     {config['selection']['browser'] or 'default'}")
     
     print("\n[Execution Behavior]")
+    print(f"  Driver:      {config['execution']['driver']}")
     print(f"  Headless:    {config['execution']['headless'] or 'default'}")
     print(f"  Debug:       {config['execution']['debug'] or 'default'}")
     print(f"  Dry run:     {config['execution']['dry_run'] or 'default'}")
@@ -166,7 +175,8 @@ def main() -> None:
 
     print("\nTest results:")
     for test_path, status in test_status.items():
-        print(f"  {test_path}: Passed" if status else "Failed")
+        result = "Passed" if status else "Failed"
+        print(f"  {test_path}: {result}")
 
     # # Parse individual logs and generate report
     # report = Reports(config)

@@ -2,6 +2,7 @@
 
 import os
 import csv
+import re
 from datetime import datetime
 
 class Reporter:
@@ -28,8 +29,12 @@ class Reporter:
         for test_path in tests:
             test_name = os.path.basename(test_path)
             log_file = os.path.join(test_path, "result.log")
-            
+
+            driver = "N/A"
+            headless = "N/A"
+            browser = "N/A"
             status = "N/A"
+
             if os.path.exists(log_file):
                 with open(log_file, "r") as f:
                     content = f.read()
@@ -37,12 +42,17 @@ class Reporter:
                         status = "PASS"
                     elif "TEST FAILED" in content:
                         status = "FAIL"
-            
-            report_data.append({"test name": test_name, "status": status})
+                    match = re.search(r"Initializing driver:\s*([^,]+),\s*([^,]+),\s*(\w+)", content)
+                    if match:
+                        driver = match.group(1).strip()
+                        browser = match.group(2).strip()
+                        headless = match.group(3).strip()
+                    
+            report_data.append({"test name": test_name, "driver": driver, "headless": headless, "browser": browser, "status": status})
 
         # Write to CSV
         with open(csv_path, mode="w", newline="") as f:
-            fieldnames = ["test name", "status"]
+            fieldnames = ["test name", "driver", "headless", "browser", "status"]
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(report_data)
