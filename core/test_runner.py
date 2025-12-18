@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 import importlib
 import importlib.util
 from .logger import Logger
+from .reporter import Reporter
 
 class TestRunner:
     def __init__(self, config: dict):
@@ -30,6 +31,7 @@ class TestRunner:
             futures = {executor.submit(self._instantiate_test, test): test for test in tests}
             for future in futures:
                 test_status[futures[future]] = future.result()
+        Reporter.generate_report(tests)
         return test_status
 
 
@@ -63,6 +65,7 @@ class TestRunner:
 
 
     def _execute_test(self, test_path: str, logger: Logger):
+        passed = True
         try:
             module_path = os.path.join(test_path, "test.py")
             module_path = module_path.replace("/", ".").replace(".py", "")
@@ -70,17 +73,18 @@ class TestRunner:
             test_instance = test_module.TAFTest(self.config, logger)
             if not test_instance.setup():
                 logger.error(f"Test setup failed")
-                return False
+                passed = False
             logger.info(f"Test setup successful")
             if not test_instance.test():
                 logger.error(f"Test failed")
-                return False
+                passed = False
             logger.info(f"Test execution successful")
             if not test_instance.teardown():
                 logger.error(f"Test teardown failed")
-                return False
+                passed = False
             logger.info(f"Test teardown successful")
-            return True
         except Exception as e:
             logger.error(f"An error occurred during test execution for {test_path}: {e}")
-            return False
+            passed = False
+        logger.info("TEST PASSED" if passed else "TEST FAILED")
+        return passed
